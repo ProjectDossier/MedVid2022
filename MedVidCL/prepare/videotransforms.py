@@ -39,11 +39,11 @@ class RandomCrop(object):
 
         i, j, h, w = self.get_params(imgs, self.size)
 
-        imgs = imgs[:, i:i + h, j:j + w, :]
+        imgs = imgs[:, i : i + h, j : j + w, :]
         return imgs
 
     def __repr__(self):
-        return self.__class__.__name__ + '(size={0})'.format(self.size)
+        return self.__class__.__name__ + "(size={0})".format(self.size)
 
 
 class CenterCrop(object):
@@ -69,13 +69,13 @@ class CenterCrop(object):
         """
         t, h, w, c = imgs.shape
         th, tw = self.size
-        i = int(np.round((h - th) / 2.))
-        j = int(np.round((w - tw) / 2.))
+        i = int(np.round((h - th) / 2.0))
+        j = int(np.round((w - tw) / 2.0))
 
-        return imgs[:, i:i + th, j:j + tw, :]
+        return imgs[:, i : i + th, j : j + tw, :]
 
     def __repr__(self):
-        return self.__class__.__name__ + '(size={0})'.format(self.size)
+        return self.__class__.__name__ + "(size={0})".format(self.size)
 
 
 class RandomHorizontalFlip(object):
@@ -100,4 +100,4 @@ class RandomHorizontalFlip(object):
         return imgs
 
     def __repr__(self):
-        return self.__class__.__name__ + '(p={})'.format(self.p)
+        return self.__class__.__name__ + "(p={})".format(self.p)

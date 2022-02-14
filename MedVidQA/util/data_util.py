@@ -5,14 +5,15 @@ import pickle
 import numpy as np
 from tqdm import tqdm
 
+
 def load_json(filename):
-    with open(filename, mode='r', encoding='utf-8') as f:
+    with open(filename, mode="r", encoding="utf-8") as f:
         data = json.load(f)
     return data
 
 
 def save_json(data, filename, save_pretty=False, sort_keys=False):
-    with open(filename, mode='w', encoding='utf-8') as f:
+    with open(filename, mode="w", encoding="utf-8") as f:
         if save_pretty:
             f.write(json.dumps(data, indent=4, sort_keys=sort_keys))
         else:
@@ -20,38 +21,40 @@ def save_json(data, filename, save_pretty=False, sort_keys=False):
 
 
 def load_lines(filename):
-    with open(filename, mode='r', encoding='utf-8') as f:
+    with open(filename, mode="r", encoding="utf-8") as f:
         return [e.strip("\n") for e in f.readlines()]
 
 
-
 def save_lines(data, filename):
-    with open(filename, mode='w', encoding='utf-8') as f:
+    with open(filename, mode="w", encoding="utf-8") as f:
         f.write("\n".join(data))
 
 
 def load_pickle(filename):
-    with open(filename, mode='rb') as handle:
+    with open(filename, mode="rb") as handle:
         data = pickle.load(handle)
         return data
 
 
 def save_pickle(data, filename):
-    with open(filename, mode='wb') as handle:
+    with open(filename, mode="wb") as handle:
         pickle.dump(data, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
 
 
 def load_video_features(root, max_position_length):
     video_features = dict()
     filenames = glob.glob(os.path.join(root, "*.npy"))
-    for filename in tqdm(filenames, total=len(filenames), desc="loading video features"):
+    for filename in tqdm(
+        filenames, total=len(filenames), desc="loading video features"
+    ):
         video_id = filename.split("/")[-1].split(".")[0]
         feature = np.load(filename)
         if max_position_length is None:
             video_features[video_id] = feature
         else:
-            new_feature = visual_feature_sampling(feature, max_num_clips=max_position_length)
+            new_feature = visual_feature_sampling(
+                feature, max_num_clips=max_position_length
+            )
             video_features[video_id] = new_feature
     return video_features
 
@@ -98,10 +101,19 @@ def compute_overlap(pred, gt):
 
 def time_to_index(start_time, end_time, num_units, duration):
     s_times = np.arange(0, num_units).astype(np.float32) / float(num_units) * duration
-    e_times = np.arange(1, num_units + 1).astype(np.float32) / float(num_units) * duration
-    candidates = np.stack([np.repeat(s_times[:, None], repeats=num_units, axis=1),
-                           np.repeat(e_times[None, :], repeats=num_units, axis=0)], axis=2).reshape((-1, 2))
-    overlaps = compute_overlap(candidates.tolist(), [start_time, end_time]).reshape(num_units, num_units)
+    e_times = (
+        np.arange(1, num_units + 1).astype(np.float32) / float(num_units) * duration
+    )
+    candidates = np.stack(
+        [
+            np.repeat(s_times[:, None], repeats=num_units, axis=1),
+            np.repeat(e_times[None, :], repeats=num_units, axis=0),
+        ],
+        axis=2,
+    ).reshape((-1, 2))
+    overlaps = compute_overlap(candidates.tolist(), [start_time, end_time]).reshape(
+        num_units, num_units
+    )
     start_index = np.argmax(overlaps) // num_units
     end_index = np.argmax(overlaps) % num_units
     return start_index, end_index, overlaps
@@ -109,7 +121,9 @@ def time_to_index(start_time, end_time, num_units, duration):
 
 def index_to_time(start_index, end_index, num_units, duration):
     s_times = np.arange(0, num_units).astype(np.float32) * duration / float(num_units)
-    e_times = np.arange(1, num_units + 1).astype(np.float32) * duration / float(num_units)
+    e_times = (
+        np.arange(1, num_units + 1).astype(np.float32) * duration / float(num_units)
+    )
     start_time = s_times[start_index]
     end_time = e_times[end_index]
     return start_time, end_time
@@ -138,7 +152,9 @@ def pad_char_seq(sequences, max_length=None, max_length_2=None):
         sp, sl = pad_seq(seq, max_length=max_length_2)
         sequence_padded.append(sp)
         sequence_length.append(sl)
-    sequence_padded, _ = pad_seq(sequence_padded, pad_tok=[0] * max_length_2, max_length=max_length)
+    sequence_padded, _ = pad_seq(
+        sequence_padded, pad_tok=[0] * max_length_2, max_length=max_length
+    )
     sequence_length, _ = pad_seq(sequence_length, max_length=max_length)
     return sequence_padded, sequence_length
 
@@ -158,8 +174,3 @@ def pad_video_seq(sequences, max_length=None):
             seq_ = seq
         sequence_padded.append(seq_)
     return sequence_padded, sequence_length
-
-
-
-
-

@@ -13,9 +13,9 @@ class Dataset(torch.utils.data.Dataset):
 
     def __getitem__(self, index):
         record = self.dataset[index]
-        video_feature = self.video_features[record['vid']]
-        s_ind, e_ind = int(record['s_ind']), int(record['e_ind'])
-        word_ids, char_ids = record['w_ids'], record['c_ids']
+        video_feature = self.video_features[record["vid"]]
+        s_ind, e_ind = int(record["s_ind"]), int(record["e_ind"])
+        word_ids, char_ids = record["w_ids"], record["c_ids"]
         return record, video_feature, word_ids, char_ids, s_ind, e_ind
 
     def __len__(self):
@@ -30,7 +30,9 @@ def train_collate_fn(data, extend):
     word_ids = np.asarray(word_ids, dtype=np.int32)  # (batch_size, w_seq_len)
     # process char ids
     char_ids, _ = pad_char_seq(char_ids)
-    char_ids = np.asarray(char_ids, dtype=np.int32)  # (batch_size, w_seq_len, c_seq_len)
+    char_ids = np.asarray(
+        char_ids, dtype=np.int32
+    )  # (batch_size, w_seq_len, c_seq_len)
     # process video features
     vfeats, vfeat_lens = pad_video_seq(video_features)
     vfeats = np.asarray(vfeats, dtype=np.float32)  # (batch_size, v_seq_len, v_dim)
@@ -48,9 +50,9 @@ def train_collate_fn(data, extend):
         if extend_len > 0:
             st_ = max(0, st - extend_len)
             et_ = min(et + extend_len, cur_max_len - 1)
-            h_labels[idx][st_:(et_ + 1)] = 1
+            h_labels[idx][st_ : (et_ + 1)] = 1
         else:
-            h_labels[idx][st:(et + 1)] = 1
+            h_labels[idx][st : (et + 1)] = 1
     # convert to torch tensor
     vfeats = torch.tensor(vfeats, dtype=torch.float32)
     vfeat_lens = torch.tensor(vfeat_lens, dtype=torch.int64)
@@ -69,7 +71,9 @@ def test_collate_fn(data):
     word_ids = np.asarray(word_ids, dtype=np.int32)  # (batch_size, w_seq_len)
     # process char ids
     char_ids, _ = pad_char_seq(char_ids)
-    char_ids = np.asarray(char_ids, dtype=np.int32)  # (batch_size, w_seq_len, c_seq_len)
+    char_ids = np.asarray(
+        char_ids, dtype=np.int32
+    )  # (batch_size, w_seq_len, c_seq_len)
     # process video features
     vfeats, vfeat_lens = pad_video_seq(video_features)
     vfeats = np.asarray(vfeats, dtype=np.float32)  # (batch_size, v_seq_len, v_dim)
@@ -84,13 +88,21 @@ def test_collate_fn(data):
 
 def get_train_loader(dataset, video_features, configs):
     train_set = Dataset(dataset=dataset, video_features=video_features)
-    train_loader = torch.utils.data.DataLoader(dataset=train_set, batch_size=configs.batch_size, shuffle=True,
-                                               collate_fn=partial(train_collate_fn, extend=configs.extend))
+    train_loader = torch.utils.data.DataLoader(
+        dataset=train_set,
+        batch_size=configs.batch_size,
+        shuffle=True,
+        collate_fn=partial(train_collate_fn, extend=configs.extend),
+    )
     return train_loader
 
 
 def get_test_loader(dataset, video_features, configs):
     test_set = Dataset(dataset=dataset, video_features=video_features)
-    test_loader = torch.utils.data.DataLoader(dataset=test_set, batch_size=configs.batch_size, shuffle=False,
-                                              collate_fn=test_collate_fn)
+    test_loader = torch.utils.data.DataLoader(
+        dataset=test_set,
+        batch_size=configs.batch_size,
+        shuffle=False,
+        collate_fn=test_collate_fn,
+    )
     return test_loader

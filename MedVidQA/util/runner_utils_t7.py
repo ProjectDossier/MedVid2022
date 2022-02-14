@@ -19,14 +19,14 @@ def set_th_config(seed):
     torch.backends.cudnn.deterministic = True
 
 
-def filter_checkpoints(model_dir, suffix='t7', max_to_keep=5):
-    model_paths = glob.glob(os.path.join(model_dir, '*.{}'.format(suffix)))
+def filter_checkpoints(model_dir, suffix="t7", max_to_keep=5):
+    model_paths = glob.glob(os.path.join(model_dir, "*.{}".format(suffix)))
     if len(model_paths) > max_to_keep:
 
         model_file_dict = dict()
         suffix_len = len(suffix) + 1
         for model_path in model_paths:
-            r7_value = float(os.path.basename(model_path).split('_')[-1][0:-suffix_len])
+            r7_value = float(os.path.basename(model_path).split("_")[-1][0:-suffix_len])
             model_file_dict[r7_value] = model_path
         sorted_tuples = sorted(model_file_dict.items(), reverse=True)
         unused_tuples = sorted_tuples[max_to_keep:]
@@ -34,26 +34,23 @@ def filter_checkpoints(model_dir, suffix='t7', max_to_keep=5):
             os.remove(model_path)
 
 
-
-
-def get_best_checkpoint(model_dir, suffix='t7'):
-    model_filenames = glob.glob(os.path.join(model_dir, '*.{}'.format(suffix)))
+def get_best_checkpoint(model_dir, suffix="t7"):
+    model_filenames = glob.glob(os.path.join(model_dir, "*.{}".format(suffix)))
     model_file_dict = dict()
     suffix_len = len(suffix) + 1
     for model_filename in model_filenames:
-        r7_value = float(os.path.basename(model_filename).split('_')[-1][0:-suffix_len])
+        r7_value = float(os.path.basename(model_filename).split("_")[-1][0:-suffix_len])
         model_file_dict[r7_value] = model_filename
     sorted_tuples = sorted(model_file_dict.items(), reverse=True)
     last_checkpoint = sorted_tuples[0]
     return last_checkpoint[1]
 
 
-
-
-
 def convert_length_to_mask(lengths):
     max_len = lengths.max().item()
-    mask = torch.arange(max_len, device=lengths.device).expand(lengths.size()[0], max_len) < lengths.unsqueeze(1)
+    mask = torch.arange(max_len, device=lengths.device).expand(
+        lengths.size()[0], max_len
+    ) < lengths.unsqueeze(1)
     mask = mask.float()
     return mask
 
@@ -74,11 +71,14 @@ def calculate_iou(i0, i1):
     return max(0.0, iou)
 
 
-def eval_test(model, data_loader, device, mode='test', epoch=None, global_step=None):
+def eval_test(model, data_loader, device, mode="test", epoch=None, global_step=None):
     ious = []
     with torch.no_grad():
         for idx, (records, vfeats, vfeat_lens, word_ids, char_ids) in tqdm(
-                enumerate(data_loader), total=len(data_loader), desc='evaluate {}'.format(mode)):
+            enumerate(data_loader),
+            total=len(data_loader),
+            desc="evaluate {}".format(mode),
+        ):
             # prepare features
             vfeats, vfeat_lens = vfeats.to(device), vfeat_lens.to(device)
             word_ids, char_ids = word_ids.to(device), char_ids.to(device)
@@ -86,13 +86,21 @@ def eval_test(model, data_loader, device, mode='test', epoch=None, global_step=N
             query_mask = (torch.zeros_like(word_ids) != word_ids).float().to(device)
             video_mask = convert_length_to_mask(vfeat_lens).to(device)
             # compute predicted results
-            _, start_logits, end_logits = model(word_ids, char_ids, vfeats, video_mask, query_mask)
+            _, start_logits, end_logits = model(
+                word_ids, char_ids, vfeats, video_mask, query_mask
+            )
             start_indices, end_indices = model.extract_index(start_logits, end_logits)
             start_indices = start_indices.cpu().numpy()
             end_indices = end_indices.cpu().numpy()
-            for record, start_index, end_index in zip(records, start_indices, end_indices):
-                start_time, end_time = index_to_time(start_index, end_index, record["v_len"], record["duration"])
-                iou = calculate_iou(i0=[start_time, end_time], i1=[record["s_time"], record["e_time"]])
+            for record, start_index, end_index in zip(
+                records, start_indices, end_indices
+            ):
+                start_time, end_time = index_to_time(
+                    start_index, end_index, record["v_len"], record["duration"]
+                )
+                iou = calculate_iou(
+                    i0=[start_time, end_time], i1=[record["s_time"], record["e_time"]]
+                )
                 ious.append(iou)
 
     r1i3 = calculate_iou_accuracy(ious, threshold=0.3)
