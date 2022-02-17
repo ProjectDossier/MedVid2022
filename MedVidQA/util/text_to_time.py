@@ -33,6 +33,10 @@ def text_to_time_chars(
                 end_time = line["start"] + line["duration"]
             current_char_position += len(line["text"]) + 1
 
+        if start_time != 0 and end_time == 0:
+            # if only start is set - end time equal to last transcript
+            end_time = transcript[-1]['start'] + transcript[-1]['duration']
+
     return start_time, end_time
 
 
@@ -49,7 +53,7 @@ if __name__ == "__main__":
         default="data/processed/text_predictions/distilbert_squad/",
     )
     parser.add_argument("--converted_data_folder", default="submissions")
-    parser.add_argument("--filename", default="test.json")
+    parser.add_argument("--filename", default="train.json")
 
     args = parser.parse_args()
 
@@ -63,22 +67,34 @@ if __name__ == "__main__":
     for transcript in transcripts:
         merged = ""
         for line in transcript["transcript"]:
-            merged += line["text"] + " "
+            try:
+                merged += line["text"] + " "
+            except TypeError:
+                merged = "empty transcript"
         transcript["merged"] = merged.strip()
 
     for video in tqdm(videos):
         transcript_dict = [
             x for x in transcripts if x["video_id"] == video["video_id"]
         ][0]
-        start_time, end_time = text_to_time_chars(
-            char_position_start=video["prediction"]["start"],
-            char_position_end=video["prediction"]["end"],
-            transcript=transcript_dict["transcript"],
-            merge_type="strict",
-        )
+
+        # in case we don't have the transcript
+        if transcript_dict['merged'] == "empty transcript":
+            start_time = 0
+            end_time = 11
+        else:
+            start_time, end_time = text_to_time_chars(
+                char_position_start=video["prediction"]["start"],
+                char_position_end=video["prediction"]["end"],
+                transcript=transcript_dict["transcript"],
+                merge_type="strict",
+            )
 
         video["prediction"]["start_time"] = convert(start_time)
         video["prediction"]["end_time"] = convert(end_time)
+
+        video["prediction"]["answer_start_second"] = start_time
+        video["prediction"]["answer_end_second"] = end_time
 
     if not os.path.exists(f"{args.answer_data_path}/{args.converted_data_folder}/"):
         os.makedirs(f"{args.answer_data_path}/{args.converted_data_folder}/")
@@ -87,3 +103,16 @@ if __name__ == "__main__":
         f"{args.answer_data_path}/{args.converted_data_folder}/{args.filename}", "w"
     ) as fp:
         json.dump(videos, fp, indent=2)
+
+    # create submission
+    submission = []
+    for video in videos:
+        submission.append({
+            "sample_id": video["sample_id"],
+            "answer_start_second": video["prediction"]["answer_start_second"],
+            "answer_end_second": video["prediction"]["answer_end_second"]
+        })
+    with open(
+        f"{args.answer_data_path}/{args.converted_data_folder}/submission_{args.filename}", "w"
+    ) as fp:
+        json.dump(submission, fp, indent=2)

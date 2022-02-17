@@ -6,7 +6,9 @@ import torch
 import torch.utils.data
 import torch.backends.cudnn
 from tqdm import tqdm
-from util.data_util import index_to_time
+# from .data_util import index_to_time
+import argparse
+import json
 
 
 def set_th_config(seed):
@@ -114,3 +116,59 @@ def eval_test(model, data_loader, device, mode="test", epoch=None, global_step=N
     score_str += "Rank@1, IoU=0.7: {:.2f}\t".format(r1i7)
     score_str += "mean IoU: {:.2f}\n".format(mi)
     return r1i3, r1i5, r1i7, mi, score_str
+
+
+def evaluate(submission, gold_data):
+    ious = []
+
+    for record in tqdm(gold_data):
+        submission_dict = [
+            x for x in submission if x["sample_id"] == record["sample_id"]
+        ][0]
+        duration = record["video_length"]
+
+        subm_start_time = max(0.0, float(submission_dict["answer_start_second"]))
+        subm_end_time = min(float(submission_dict["answer_end_second"]), duration)
+
+        start_time = max(0.0, float(record["answer_start_second"]))
+        end_time = min(float(record["answer_end_second"]), duration)
+
+        iou = calculate_iou(
+            i0=[subm_start_time,
+                subm_end_time],
+            i1=[start_time,
+                end_time]
+        )
+        ious.append(iou)
+
+    r1i3 = calculate_iou_accuracy(ious, threshold=0.3)
+    r1i5 = calculate_iou_accuracy(ious, threshold=0.5)
+    r1i7 = calculate_iou_accuracy(ious, threshold=0.7)
+    mi = np.mean(ious) * 100.0
+    # write the scores
+    score_str = ""
+    score_str += "Rank@1, IoU=0.3: {:.2f}\t".format(r1i3)
+    score_str += "Rank@1, IoU=0.5: {:.2f}\t".format(r1i5)
+    score_str += "Rank@1, IoU=0.7: {:.2f}\t".format(r1i7)
+    score_str += "mean IoU: {:.2f}\n".format(mi)
+    print(score_str)
+    return score_str
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--question_data_path", default="data/raw/MedVidQA/")
+    parser.add_argument(
+        "--submission_data_path",
+        default="data/processed/text_predictions/distilbert_squad/submissions/submission_",
+    )
+    parser.add_argument("--filename", default="train.json")
+
+    args = parser.parse_args()
+
+    with open(f"{args.question_data_path}/{args.filename}") as fp:
+        gold_data = json.load(fp)
+
+    with open(f"{args.submission_data_path}{args.filename}") as fp:
+        submissions = json.load(fp)
+
+    evaluate(submissions, gold_data)

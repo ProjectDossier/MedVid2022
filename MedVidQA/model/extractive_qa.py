@@ -11,7 +11,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output_data_path", default="data/processed/text_predictions/"
     )
-    parser.add_argument("--filename", default="test.json")
+    parser.add_argument("--filename", default="train.json")
     parser.add_argument("--model", default="distilbert_squad")
 
     args = parser.parse_args()
@@ -26,7 +26,10 @@ if __name__ == "__main__":
     for transcript in transcripts:
         merged = ""
         for line in transcript["transcript"]:
-            merged += line["text"] + " "
+            try:
+                merged += line["text"] + " "
+            except TypeError:
+                merged = "empty transcript"
         transcript["merged"] = merged.strip()
 
     question_answering = pipeline(
