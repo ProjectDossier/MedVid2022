@@ -118,7 +118,10 @@ def eval_test(model, data_loader, device, mode="test", epoch=None, global_step=N
     return r1i3, r1i5, r1i7, mi, score_str
 
 
-def evaluate(submission, gold_data):
+def evaluate(submission: list[dict], gold_data: list[dict]) -> str:
+    """Custom function used to evaluate submission against the gold data.
+    It requires a list of dictionaries of both variables as an input.
+    It calculated intersection over union for 0.3, 0.5 and 0.7 as well as mean IOU."""
     ious = []
 
     for record in tqdm(gold_data):
@@ -145,6 +148,7 @@ def evaluate(submission, gold_data):
     r1i5 = calculate_iou_accuracy(ious, threshold=0.5)
     r1i7 = calculate_iou_accuracy(ious, threshold=0.7)
     mi = np.mean(ious) * 100.0
+
     # write the scores
     score_str = ""
     score_str += "Rank@1, IoU=0.3: {:.2f}\t".format(r1i3)
@@ -153,6 +157,7 @@ def evaluate(submission, gold_data):
     score_str += "mean IoU: {:.2f}\n".format(mi)
     print(score_str)
     return score_str
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -171,4 +176,4 @@ if __name__ == '__main__':
     with open(f"{args.submission_data_path}{args.filename}") as fp:
         submissions = json.load(fp)
 
-    evaluate(submissions, gold_data)
+    evaluate(submission=submissions, gold_data=gold_data)
