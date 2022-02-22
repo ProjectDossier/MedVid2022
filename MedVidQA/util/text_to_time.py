@@ -35,7 +35,7 @@ def text_to_time_chars(
 
         if start_time != 0 and end_time == 0:
             # if only start is set - end time equal to last transcript
-            end_time = transcript[-1]['start'] + transcript[-1]['duration']
+            end_time = transcript[-1]["start"] + transcript[-1]["duration"]
 
     return start_time, end_time
 
@@ -45,13 +45,15 @@ def convert(seconds: float) -> str:
     return "%02d:%02d" % (min, sec)
 
 
-def expand_start_end_time(start_time:float, end_time:float, duration:float, method:str) -> tuple[float, float]:
+def expand_start_end_time(
+    start_time: float, end_time: float, duration: float, method: str
+) -> tuple[float, float]:
     alpha1 = 0.5
     alpha2 = 0.9
     beta1 = beta2 = 0
 
-    start_time = start_time*alpha1 + beta1
-    end_time = end_time*alpha2 + beta2
+    start_time = start_time * alpha1 + beta1
+    end_time = end_time * alpha2 + beta2
 
     if start_time < 0:
         start_time = 0
@@ -95,7 +97,7 @@ if __name__ == "__main__":
         ][0]
 
         # in case we don't have the transcript
-        if transcript_dict['merged'] == "empty transcript":
+        if transcript_dict["merged"] == "empty transcript":
             start_time = 0
             end_time = 11
         else:
@@ -105,10 +107,12 @@ if __name__ == "__main__":
                 transcript=transcript_dict["transcript"],
                 merge_type="strict",
             )
-            expand_start_end_time(start_time=start_time,
-                                  end_time=end_time,
-                                  duration=video['video_length'],
-                                  method='linear')
+            expand_start_end_time(
+                start_time=start_time,
+                end_time=end_time,
+                duration=video["video_length"],
+                method="linear",
+            )
 
         video["prediction"]["start_time"] = convert(start_time)
         video["prediction"]["end_time"] = convert(end_time)
@@ -127,12 +131,15 @@ if __name__ == "__main__":
     # create submission
     submission = []
     for video in videos:
-        submission.append({
-            "sample_id": video["sample_id"],
-            "answer_start_second": video["prediction"]["answer_start_second"],
-            "answer_end_second": video["prediction"]["answer_end_second"]
-        })
+        submission.append(
+            {
+                "sample_id": video["sample_id"],
+                "answer_start_second": video["prediction"]["answer_start_second"],
+                "answer_end_second": video["prediction"]["answer_end_second"],
+            }
+        )
     with open(
-        f"{args.answer_data_path}/{args.converted_data_folder}/predictions_{args.filename}", "w"
+        f"{args.answer_data_path}/{args.converted_data_folder}/predictions_{args.filename}",
+        "w",
     ) as fp:
         json.dump(submission, fp, indent=2)

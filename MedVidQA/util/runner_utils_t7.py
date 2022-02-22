@@ -6,6 +6,7 @@ import torch
 import torch.utils.data
 import torch.backends.cudnn
 from tqdm import tqdm
+
 # from .data_util import index_to_time
 import argparse
 import json
@@ -137,10 +138,7 @@ def evaluate(submission: list[dict], gold_data: list[dict]) -> str:
         end_time = min(float(record["answer_end_second"]), duration)
 
         iou = calculate_iou(
-            i0=[subm_start_time,
-                subm_end_time],
-            i1=[start_time,
-                end_time]
+            i0=[subm_start_time, subm_end_time], i1=[start_time, end_time]
         )
         ious.append(iou)
 
@@ -159,7 +157,7 @@ def evaluate(submission: list[dict], gold_data: list[dict]) -> str:
     return score_str
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--question_data_path", default="data/raw/MedVidQA/")
     parser.add_argument(
