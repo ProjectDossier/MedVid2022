@@ -9,7 +9,7 @@ def text_to_time_chars(
     char_position_end: int,
     transcript: list[dict],
     merge_type: str = "strict",
-):
+) -> tuple[float, float]:
     """converts prediction written as a start and end characters
 
     :param char_position_start:
@@ -45,15 +45,31 @@ def convert(seconds: float) -> str:
     return "%02d:%02d" % (min, sec)
 
 
+def expand_start_end_time(start_time:float, end_time:float, duration:float, method:str) -> tuple[float, float]:
+    alpha1 = 0.5
+    alpha2 = 0.9
+    beta1 = beta2 = 0
+
+    start_time = start_time*alpha1 + beta1
+    end_time = end_time*alpha2 + beta2
+
+    if start_time < 0:
+        start_time = 0
+    if end_time > duration:
+        end_time = duration
+
+    return start_time, end_time
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--transcript_data_path", default="data/interim/transcripts/")
     parser.add_argument(
         "--answer_data_path",
-        default="data/processed/text_predictions/distilbert_squad/",
+        default="data/processed/text_predictions/biobert_qa/",
     )
     parser.add_argument("--converted_data_folder", default="submissions")
-    parser.add_argument("--filename", default="train.json")
+    parser.add_argument("--filename", default="val.json")
 
     args = parser.parse_args()
 
@@ -89,6 +105,10 @@ if __name__ == "__main__":
                 transcript=transcript_dict["transcript"],
                 merge_type="strict",
             )
+            expand_start_end_time(start_time=start_time,
+                                  end_time=end_time,
+                                  duration=video['video_length'],
+                                  method='linear')
 
         video["prediction"]["start_time"] = convert(start_time)
         video["prediction"]["end_time"] = convert(end_time)
@@ -113,6 +133,6 @@ if __name__ == "__main__":
             "answer_end_second": video["prediction"]["answer_end_second"]
         })
     with open(
-        f"{args.answer_data_path}/{args.converted_data_folder}/submission_{args.filename}", "w"
+        f"{args.answer_data_path}/{args.converted_data_folder}/predictions_{args.filename}", "w"
     ) as fp:
         json.dump(submission, fp, indent=2)
