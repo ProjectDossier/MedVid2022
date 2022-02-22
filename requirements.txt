@@ -14,3 +14,5 @@ pytube~=12.0.0
 nltk~=3.7
 seaborn~=0.11.2
 matplotlib~=3.5.1
+pytesseract~=0.3.8
+pillow~=9.0.1
