@@ -6,10 +6,7 @@ import matplotlib.pyplot as plt
 import argparse
 import os
 from tqdm.auto import tqdm
-
-
-def min_max_scaling(series: pd.Series) -> pd.Series:
-    return (series - series.min()) / (series.max() - series.min())
+from MedVidQA.util.data_util import min_max_scaling
 
 
 def extrapolate_scores(df: pd.DataFrame) -> pd.DataFrame:
@@ -71,7 +68,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--results_file",
-        default="data/processed/predictions/passage_similarity/specter_test copy.csv",
+        default="data/processed/predictions/passage_similarity/merged/test.csv",
         help="results file in a csv format containing similarity score.",
     )
     parser.add_argument(
@@ -81,7 +78,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--model_name",
-        default="specter-2",
+        default="merged",
         help="name of the model that will be appended to the plot.",
     )
 
@@ -100,7 +97,7 @@ if __name__ == "__main__":
     for query_id in tqdm(df["qid"].unique().tolist()):
         tmp_df = df[df["qid"] == query_id].copy()
 
-        tmp_df.loc["score"] = min_max_scaling(tmp_df["score"])
+        # tmp_df["score"] = min_max_scaling(tmp_df["score"])
 
         gold_answer = [x for x in gold_results if x["sample_id"] == query_id][0]
 
