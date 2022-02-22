@@ -18,16 +18,60 @@ def extrapolate_scores(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def plot_results_line(
+    data: pd.DataFrame,
+    answer_start_second: float,
+    answer_end_second: float,
+    filename: str,
+):
+    x1, y1 = [
+        answer_start_second,
+        answer_end_second,
+    ], [0, 0]
+
+    plt.plot(figsize=(15, 15))
+    sns.lineplot(data=data)
+    plt.plot(x1, y1, marker="x", color="red")
+    plt.savefig(
+        filename,
+        dpi=600,
+    )
+    plt.cla()
+
+
+def plot_results_kde(
+    data: pd.DataFrame,
+    x_column: str,
+    y_column: str,
+    answer_start_second: float,
+    answer_end_second: float,
+    filename: str,
+):
+    x1, y1 = [
+        answer_start_second,
+        answer_end_second,
+    ], [0, 0]
+
+    plt.plot(figsize=(15, 15))
+    sns.displot(data=data, x=x_column, y=y_column, kind="kde", rug=True, fill=True)
+    plt.plot(x1, y1, marker="x", color="red")
+    plt.savefig(
+        filename,
+        dpi=600,
+    )
+    plt.cla()
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--gold_file",
-        default="data/raw/MedVidQA/train.json",
+        default="data/raw/MedVidQA/test.json",
         help="input json file containing start and end time of answers.",
     )
     parser.add_argument(
         "--results_file",
-        default="data/processed/transcript_passage/query_samples.csv",
+        default="data/processed/predictions/passage_similarity/specter_test copy.csv",
         help="results file in a csv format containing similarity score.",
     )
     parser.add_argument(
@@ -37,7 +81,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--model_name",
-        default="bm25",
+        default="specter-2",
         help="name of the model that will be appended to the plot.",
     )
 
@@ -49,15 +93,16 @@ if __name__ == "__main__":
     df = pd.read_csv(args.results_file)
     df = extrapolate_scores(df=df)
 
-    if not os.path.exists(args.plots_folder):
-        os.makedirs(args.plots_folder)
+    plots_outfolder = f"{args.plots_folder}/{args.model_name}/"
+    if not os.path.exists(plots_outfolder):
+        os.makedirs(plots_outfolder)
 
     for query_id in tqdm(df["qid"].unique().tolist()):
-        tmp_df = df[df["qid"] == query_id]
+        tmp_df = df[df["qid"] == query_id].copy()
 
         tmp_df.loc["score"] = min_max_scaling(tmp_df["score"])
 
-        gold_answer = gold_results[query_id - 1]
+        gold_answer = [x for x in gold_results if x["sample_id"] == query_id][0]
 
         # print(tmp_df[['qid',"docno","text", "query"]])
         # print(gold_answer)
@@ -72,24 +117,18 @@ if __name__ == "__main__":
             .set_index(0)
         )
 
-        plt.plot(figsize=(15, 15))
-
-        sns.lineplot(data=tmp["score"], ci=0.7)
-        x1, y1 = [
-            gold_answer["answer_start_second"],
-            gold_answer["answer_end_second"],
-        ], [0, 0]
-        plt.plot(x1, y1, marker="x", color="red")
-        plt.savefig(
-            f"{args.plots_folder}/{gold_answer['sample_id']}_line_{args.model_name}.png",
-            dpi=600,
+        plot_results_line(
+            data=tmp["score"],
+            answer_start_second=gold_answer["answer_start_second"],
+            answer_end_second=gold_answer["answer_end_second"],
+            filename=f"{plots_outfolder}/{gold_answer['sample_id']}_line_{args.model_name}.png",
         )
-        plt.cla()
 
-        sns.displot(data=tmp_df, x="center", y="score", kind="kde", rug=True, fill=True)
-        plt.plot(x1, y1, marker="x", color="red")
-        plt.savefig(
-            f"{args.plots_folder}/{gold_answer['sample_id']}_kde_{args.model_name}.png",
-            dpi=600,
+        plot_results_kde(
+            data=tmp_df,
+            x_column="center",
+            y_column="score",
+            answer_start_second=gold_answer["answer_start_second"],
+            answer_end_second=gold_answer["answer_end_second"],
+            filename=f"{plots_outfolder}/{gold_answer['sample_id']}_kde_{args.model_name}.png",
         )
-        plt.cla()
