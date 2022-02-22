@@ -1,5 +1,7 @@
 import json
 import argparse
+import os.path
+
 import numpy as np
 import pandas as pd
 import torch
@@ -7,9 +9,12 @@ from sentence_transformers import SentenceTransformer
 from tqdm.auto import tqdm
 from sklearn.metrics.pairwise import cosine_similarity
 
+from MedVidQA.util.data_util import min_max_scaling
 
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
+# model = SentenceTransformer("bionlp/bluebert_pubmed_mimic_uncased_L-12_H-768_A-12")
+# model = SentenceTransformer("bert-base-uncased")
 model = SentenceTransformer("sentence-transformers/allenai-specter")
 model = model.to(device)
 
@@ -30,16 +35,19 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output_data_path", default="data/processed/predictions/passage_similarity/"
     )
-    parser.add_argument("--filename", default="test.json")
-    parser.add_argument("--model", default="specter-3")
+    parser.add_argument("--dataset", default="test")
+    parser.add_argument("--model", default="specter-2")
 
     args = parser.parse_args()
 
-    with open(f"{args.question_data_path}/{args.filename}") as fp:
+    with open(f"{args.question_data_path}/{args.dataset}.json") as fp:
         videos = json.load(fp)
 
-    with open(f"{args.transcript_data_path}/test_3.json") as fp:
+    with open(f"{args.transcript_data_path}/test_2.json") as fp:
         transcripts = json.load(fp)
+
+    if not os.path.exists(f"{args.output_data_path}/{args.dataset}"):
+        os.makedirs(f"{args.output_data_path}/{args.dataset}")
 
     out_df = pd.DataFrame()
     for video in tqdm(videos):
@@ -51,10 +59,13 @@ if __name__ == "__main__":
 
         df = pd.DataFrame.from_dict(transcript["transcript"])
         df["score"] = sim_scores[0]
-        df["qid"] = video["sample_id"]  # FIXME
-        # video["prediction"] = sim_scores
-        out_df = out_df.append(df)
+        df["score"] = min_max_scaling(df["score"])
+
+        df["qid"] = video["sample_id"]
+        df["model"] = args.model
+
+        out_df = pd.concat([out_df, df])
 
         out_df.to_csv(
-            f"{args.output_data_path}/{args.model}_{args.filename.split('.')[0]}.csv"
+            f"{args.output_data_path}/{args.dataset}/{args.model}_{args.dataset}.csv"
         )
