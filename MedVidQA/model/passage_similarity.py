@@ -12,60 +12,108 @@ from sklearn.metrics.pairwise import cosine_similarity
 from MedVidQA.util.data_util import min_max_scaling
 
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
-
-# model = SentenceTransformer("bionlp/bluebert_pubmed_mimic_uncased_L-12_H-768_A-12")
-# model = SentenceTransformer("bert-base-uncased")
-model = SentenceTransformer("sentence-transformers/allenai-specter")
-model = model.to(device)
+print(f"using {device}")
 
 
-def similarity_score(query: str, documents: list[str]):
+def similarity_score(model: SentenceTransformer, query: str, documents: list[str]):
     query_encoded: np.array = model.encode([query])
     documents_encoded: np.array = model.encode(documents)
 
     return cosine_similarity(query_encoded, documents_encoded)
 
 
+def select_model(model_name: str) -> SentenceTransformer:
+    if model_name == "bluebert":
+        model = SentenceTransformer(
+            "bionlp/bluebert_pubmed_mimic_uncased_L-12_H-768_A-12"
+        )
+    elif model_name == "bert":
+        model = SentenceTransformer("bert-base-uncased")
+    elif model_name == "specter":
+        model = SentenceTransformer("sentence-transformers/allenai-specter")
+    elif model_name == "specter":
+        model = SentenceTransformer("sentence-transformers/allenai-specter")
+    else:
+        model = SentenceTransformer("bert-base-uncased")
+        print("WARN: using default BERT model")
+
+    model = model.to(device)
+    return model
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--transcript_data_path", default="data/interim/transcripts_merged/"
+        "--transcript_data_path", default="data/interim/transcripts/"
+    )
+    parser.add_argument(
+        "--transcripts_file",
+        default="",
+        help="if empty it will take every json in the folder",
     )
     parser.add_argument("--question_data_path", default="data/raw/MedVidQA/")
     parser.add_argument(
         "--output_data_path", default="data/processed/predictions/passage_similarity/"
     )
     parser.add_argument("--dataset", default="test")
-    parser.add_argument("--model", default="specter-2")
+    parser.add_argument("--model", default="specter", type=str)
 
     args = parser.parse_args()
+
+    if not os.path.exists(f"{args.output_data_path}/{args.dataset}/{args.model}"):
+        os.makedirs(f"{args.output_data_path}/{args.dataset}/{args.model}")
+
+    model: SentenceTransformer = select_model(model_name=args.model)
 
     with open(f"{args.question_data_path}/{args.dataset}.json") as fp:
         videos = json.load(fp)
 
-    with open(f"{args.transcript_data_path}/test_2.json") as fp:
-        transcripts = json.load(fp)
+    input_transcripts_dict: dict = {}
+    if args.transcripts_file:
+        with open(f"{args.transcript_data_path}/{args.transcripts_file}") as fp:
+            input_transcripts_dict[args.transcripts_file] = json.load(fp)
+    else:
+        transcripts_files = [
+            x for x in os.listdir(args.transcript_data_path) if x.endswith(".json")
+        ]
+        for transcripts_file in transcripts_files:
+            with open(f"{args.transcript_data_path}/{transcripts_file}") as fp:
+                input_transcripts_dict[transcripts_file] = json.load(fp)
 
-    if not os.path.exists(f"{args.output_data_path}/{args.dataset}"):
-        os.makedirs(f"{args.output_data_path}/{args.dataset}")
+    print(f"Loaded {len(input_transcripts_dict)} transcript datasets")
 
-    out_df = pd.DataFrame()
-    for video in tqdm(videos):
-        transcript = [x for x in transcripts if x["video_id"] == video["video_id"]][0]
+    for transcripts_file, transcripts in input_transcripts_dict.items():
+        print(f"Processing file: {transcripts_file}")
+        input_feature = transcripts_file.split('.')[0]
 
-        query = video["question"]
-        documents = [line["text"] for line in transcript["transcript"]]
-        sim_scores = similarity_score(query=query, documents=documents)
+        out_df = pd.DataFrame()
+        for video in tqdm(videos):
+            transcript = [x for x in transcripts if x["video_id"] == video["video_id"]]
+            if len(transcript) > 0:
+                # we need to take the first element from the transcript list of all
+                # transcripts with the same video_id
+                transcript = transcript[0]["transcript"]
 
-        df = pd.DataFrame.from_dict(transcript["transcript"])
-        df["score"] = sim_scores[0]
-        df["score"] = min_max_scaling(df["score"])
+                # sometimes it is possible that we have an empty transcript record
+                if len(transcript) == 0:
+                    continue
+            else:
+                continue
 
-        df["qid"] = video["sample_id"]
-        df["model"] = args.model
+            query = video["question"]
+            documents = [line["text"] for line in transcript]
+            sim_scores = similarity_score(model=model, query=query, documents=documents)
 
-        out_df = pd.concat([out_df, df])
+            df = pd.DataFrame.from_dict(transcript)
+            df["score"] = sim_scores[0]
+            # df["score"] = min_max_scaling(df["score"])
 
-        out_df.to_csv(
-            f"{args.output_data_path}/{args.dataset}/{args.model}_{args.dataset}.csv"
-        )
+            df["qid"] = video["sample_id"]
+            df["model"] = args.model
+            df["input_feature"] = input_feature
+
+            out_df = pd.concat([out_df, df])
+
+            out_df.to_csv(
+                f"{args.output_data_path}/{args.dataset}/{args.model}/{input_feature}.csv"
+            )
