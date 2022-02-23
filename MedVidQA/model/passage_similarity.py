@@ -31,21 +31,24 @@ def select_model(model_name: str) -> SentenceTransformer:
         model = SentenceTransformer("bert-base-uncased")
     elif model_name == "specter":
         model = SentenceTransformer("sentence-transformers/allenai-specter")
-    elif model_name == "specter":
-        model = SentenceTransformer("sentence-transformers/allenai-specter")
+    elif model_name == "multiqa_minilm":
+        model = SentenceTransformer("sentence-transformers/multi-qa-MiniLM-L6-cos-v1")
+    elif model_name == "msmarco_roberta":
+        model = SentenceTransformer(
+            "sentence-transformers/msmarco-distilroberta-base-v2"
+        )
+    elif model_name == "nli_mpnet":
+        model = SentenceTransformer("sentence-transformers/nli-mpnet-base-v2")
     else:
         model = SentenceTransformer("bert-base-uncased")
         print("WARN: using default BERT model")
-
     model = model.to(device)
     return model
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--transcript_data_path", default="data/interim/transcripts/"
-    )
+    parser.add_argument("--transcript_data_path", default="data/interim/transcripts/")
     parser.add_argument(
         "--transcripts_file",
         default="",
@@ -84,7 +87,7 @@ if __name__ == "__main__":
 
     for transcripts_file, transcripts in input_transcripts_dict.items():
         print(f"Processing file: {transcripts_file}")
-        input_feature = transcripts_file.split('.')[0]
+        input_feature = transcripts_file.split(".")[0]
 
         out_df = pd.DataFrame()
         for video in tqdm(videos):
@@ -101,7 +104,10 @@ if __name__ == "__main__":
                 continue
 
             query = video["question"]
-            documents = [line["text"] for line in transcript]
+            try:
+                documents = [line["text"] for line in transcript]
+            except TypeError:  # FIXME - change transcript from youtube videos to return list in case of empty transcript
+                continue
             sim_scores = similarity_score(model=model, query=query, documents=documents)
 
             df = pd.DataFrame.from_dict(transcript)
