@@ -21,7 +21,7 @@ if __name__ == "__main__":
         os.makedirs(args.ocr_path)
 
     out_list = []
-    for folder in tqdm(image_folders[246:]):
+    for folder in tqdm(image_folders):
         transcript = []
         for image in os.listdir(f"{args.in_path}/{folder}"):
             ocred_text = pytesseract.image_to_string(
