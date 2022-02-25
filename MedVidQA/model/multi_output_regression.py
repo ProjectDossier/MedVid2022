@@ -10,7 +10,17 @@ import pandas as pd
 import json
 
 
-def plot_prediction(y_true, y_pred, label:str, c:str, marker:str, title:str):
+models_list = [
+    "msmarco_roberta",
+    "bert",
+    "bluebert",
+    "nli_mpnet",
+    "specter",
+    "multiqa_minilm",
+]
+
+
+def plot_prediction(y_true, y_pred, label: str, c: str, marker: str, title: str):
     # Plot start time
     plt.figure()
     s = 50
@@ -36,188 +46,152 @@ def plot_prediction(y_true, y_pred, label:str, c:str, marker:str, title:str):
     return plt
 
 
-def load_data(gold_file, predictions):
+def load_data(gold_file, predictions_file):
+    df = pd.read_csv(predictions_file)
 
     with open(gold_file) as fp:
         gold_results = json.load(fp)
 
-    df = pd.read_csv(predictions)
+    gold_results = [x for x in gold_results if x["sample_id"] in df["qid"].unique()]
 
-    print(df['qid'].unique())
-    # print(len(df['qid'].unique()))
-    # print([x for x in range(1,2711) if x not in df['qid'].unique()])
+    df = df[df["model"].isin(models_list)]
 
-
-    df = df[df['model'].isin(["msmarco_roberta", "bert", "bluebert", "nli_mpnet", "specter", "multiqa_minilm"])]
-
-    X = pd.pivot_table(df, values='score', index=['qid'],
-                        columns=['model', 'order_n'])
-
+    X = pd.pivot_table(df, values="score", index=["qid"], columns=["model", "order_n"])
     X = X.fillna(0)
     X = X.values
-    # X = np.c_[X, np.array([x['video_length'] for x in gold_results])]
 
-    query_dict = {
-        index_i:x['sample_id'] for index_i, x in enumerate(gold_results)
-    }
-    print(query_dict)
-    y = [(x['answer_start_second']/x['video_length'], (x['answer_end_second']-x['answer_start_second'])/x['video_length']) for x in gold_results]
+    # append video length
+    X = np.c_[X, np.array([x["video_length"] for x in gold_results])]
+
+    query_dict = {index_i: x["sample_id"] for index_i, x in enumerate(gold_results)}
+
+    y = [
+        (
+            x["answer_start_second"] / x["video_length"],
+            (x["answer_end_second"] - x["answer_start_second"]) / x["video_length"],
+        )
+        for x in gold_results
+    ]
     y = np.array(y)
 
-    # FIXME for train
-    if len(y) > 600:
-        y = np.delete(y, (674), axis=0)
-
-    # print(y[674])
-    # y = np.c_(y[:675], y[676:])
-    print(np.argwhere(np.isnan(y)))
-    print(np.argwhere(np.isnan(X)))
-
-    print(X.shape)
-    print(y.shape)
-
-    return X, y, query_dict
+    return X, y, query_dict, gold_results
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--gold_file",
-        default="data/raw/MedVidQA/test.json",
+        "--gold_files_folder",
+        default="data/raw/MedVidQA/",
         help="input json file containing start and end time of answers.",
     )
     parser.add_argument(
-        "--results_file",
-        default="data/processed/predictions/time_normalised/test.csv",
+        "--prediction_folder",
+        default="data/processed/predictions/time_normalised/",
         help="results file in a csv format containing similarity score.",
     )
     parser.add_argument(
-        "--plots_folder",
-        default="data/plots/comparison/",
-        help="folder where plots will be saved.",
-    )
-    parser.add_argument(
-        "--model_name",
-        default="time_normalised",
-        help="name of the model that will be appended to the plot.",
+        "--sampling_type",
+        default="max",
+        help="sampling type - min, max, mean. supported by time_normalisation script.",
     )
     parser.add_argument(
         "--submission_data_path",
         default="data/processed/predictions/time_normalised/submission/",
     )
-
     args = parser.parse_args()
 
-    with open(args.gold_file) as fp:
-        gold_results = json.load(fp)
+    X_train, y_train, _, _ = load_data(
+        gold_file=f"{args.gold_files_folder}/train.json",
+        predictions_file=f"{args.prediction_folder}/train.csv",
+    )
+    X_val, y_val, _, _ = load_data(
+        gold_file=f"{args.gold_files_folder}/val.json",
+        predictions_file=f"{args.prediction_folder}/val.csv",
+    )
+    X_test, y_test, test_dict, gold_test = load_data(
+        gold_file=f"{args.gold_files_folder}/test.json",
+        predictions_file=f"{args.prediction_folder}/test.csv",
+    )
+    X_train = np.concatenate((X_train, X_val), axis=0)
+    y_train = np.concatenate((y_train, y_val), axis=0)
+    print("data loaded")
 
-    df = pd.read_csv(args.results_file)
-
-    print(df['qid'].unique())
-    # print(len(df['qid'].unique()))
-    # print([x for x in range(1,2711) if x not in df['qid'].unique()])
-
-
-    # df = df[df['model'].isin(["msmarco_roberta", "bert", "bluebert", "nli_mpnet", "specter", "multiqa_minilm"])]
-
-    X = pd.pivot_table(df, values='score', index=['qid'],
-                        columns=['model', 'order_n'])
-
-    X = X.fillna(0)
-    X = X.values
-    # X = np.c_[X, np.array([x['video_length'] for x in gold_results])]
-
-    query_dict = {
-        index_i:x['sample_id'] for index_i, x in enumerate(gold_results)
-    }
-    print(query_dict)
-    y = [(x['answer_start_second']/x['video_length'], x['answer_end_second']/x['video_length']) for x in gold_results]
-    y = np.array(y)
-
-    # FIXME for train
-    # y = np.delete(y, (674), axis=0)
-
-    # print(y[674])
-    # y = np.c_(y[:675], y[676:])
-    print(np.argwhere(np.isnan(y)))
-    print(np.argwhere(np.isnan(X)))
-
-    print(X.shape)
-    print(y.shape)
-
-    X_train, y_train, train_dict = load_data(gold_file="data/raw/MedVidQA/train.json",
-                                             predictions="data/processed/predictions/time_normalised/train.csv")
-    X_test, y_test, test_dict = load_data(gold_file="data/raw/MedVidQA/test.json",
-                                          predictions="data/processed/predictions/time_normalised/test.csv")
-
-    # Create a random dataset
-    # rng = np.random.RandomState(1)
-    # X = np.sort(200 * rng.rand(600, 1) - 100, axis=0)
-    # y = np.array([np.pi * np.sin(X).ravel(), np.pi * np.cos(X).ravel()]).T
-    # y += 0.5 - rng.rand(*y.shape)
-    #
-    # X_train, X_test, y_train, y_test = train_test_split(
-    #     X, y, train_size=0.8, random_state=4
-    # )
-
-    max_depth = 20
+    max_depth = 10
+    n_estimators = 20
     regr_multirf = MultiOutputRegressor(
-        RandomForestRegressor(n_estimators=3, max_depth=max_depth, random_state=0)
+        RandomForestRegressor(n_estimators=n_estimators, max_depth=max_depth, random_state=42)
     )
     regr_multirf.fit(X_train, y_train)
 
-    regr_rf = RandomForestRegressor(n_estimators=2, max_depth=max_depth, random_state=2)
+    regr_rf = RandomForestRegressor(n_estimators=n_estimators, max_depth=max_depth, random_state=42)
     regr_rf.fit(X_train, y_train)
 
     # Predict on new data
     y_multirf = regr_multirf.predict(X_test)
     y_rf = regr_rf.predict(X_test)
 
+    # predict on train to check overfit
+    y_multirf_train = regr_multirf.predict(X_train)
 
     # plot predictions on train data
-    y_multirf_train = regr_multirf.predict(X_train)
-    plt = plot_prediction(y_true=y_train[:, 0], y_pred=y_multirf_train[:, 0],
-                    label="Multi RF score=%.2f" % regr_multirf.score(X_train, y_train),
-                    c="navy", marker="s",
-                    title="Comparing multi-output RF \nfor start time prediction on train")
+    plt = plot_prediction(
+        y_true=y_train[:, 0],
+        y_pred=y_multirf_train[:, 0],
+        label="Multi RF score=%.2f" % regr_multirf.score(X_train, y_train),
+        c="navy",
+        marker="s",
+        title="Comparing multi-output RF for\nstart time prediction on train with %s sampling"
+        % (args.sampling_type),
+    )
     plt.show()
 
-    plt = plot_prediction(y_true=y_train[:, 1], y_pred=y_multirf_train[:, 1],
-                    label="Multi RF score=%.2f" % regr_multirf.score(X_train, y_train),
-                    c="navy", marker="s",
-                    title="Comparing multi-output RF \nfor end time prediction on train")
+    plt = plot_prediction(
+        y_true=y_train[:, 1],
+        y_pred=y_multirf_train[:, 1],
+        label="Multi RF score=%.2f" % regr_multirf.score(X_train, y_train),
+        c="navy",
+        marker="s",
+        title="Comparing multi-output RF for\nduration prediction on train with %s sampling"
+        % (args.sampling_type),
+    )
     plt.show()
 
     # plot predictions on test data
-    plt = plot_prediction(y_true=y_test[:, 0], y_pred=y_multirf[:, 0],
-                    label="Multi RF score=%.2f" % regr_multirf.score(X_test, y_test),
-                    c="navy", marker="s",
-                    title="Comparing multi-output RF \nfor start time prediction on test")
+    plt = plot_prediction(
+        y_true=y_test[:, 0],
+        y_pred=y_multirf[:, 0],
+        label="Multi RF score=%.2f" % regr_multirf.score(X_test, y_test),
+        c="navy",
+        marker="s",
+        title="Comparing multi-output RF for\nstart time prediction on test with %s sampling"
+        % (args.sampling_type),
+    )
     plt.show()
 
-    plt = plot_prediction(y_true=y_test[:, 1], y_pred=y_multirf[:, 1],
-                    label="Multi RF score=%.2f" % regr_multirf.score(X_test, y_test),
-                    c="navy", marker="s",
-                    title="Comparing multi-output RF \nfor end time prediction on test")
+    plt = plot_prediction(
+        y_true=y_test[:, 1],
+        y_pred=y_multirf[:, 1],
+        label="Multi RF score=%.2f" % regr_multirf.score(X_test, y_test),
+        c="navy",
+        marker="s",
+        title="Comparing multi-output RF for\nduration prediction on test with %s sampling"
+        % (args.sampling_type),
+    )
     plt.show()
     plt.show()
-
 
     # create submission
-    submission = []
-    with open("data/raw/MedVidQA/test.json") as fp:
-        gold_results = json.load(fp)
+    if not os.path.exists(f"{args.submission_data_path}/{args.sampling_type}"):
+        os.makedirs(f"{args.submission_data_path}/{args.sampling_type}")
 
+    submission = []
     for index_i, sample_id in test_dict.items():
-        video = [x for x in gold_results if x["sample_id"] == sample_id][0]
-    # for video in videos:
-        start_time = y_multirf[index_i,0]*video["video_length"]
+        video = [x for x in gold_test if x["sample_id"] == sample_id][0]
+
+        start_time = y_multirf[index_i, 0] * video["video_length"]
         duration = y_multirf[index_i, 1] * video["video_length"]
         end_time = start_time + duration
-        # end_time = y_multirf[index_i, 1] * video["video_length"]
-        # if start_time > y_multirf[index_i,1]*video["video_length"]:
-        #     start_time = y_multirf[index_i,1]*video["video_length"]
-        #     end_time = y_multirf[index_i,0]*video["video_length"]
+
         submission.append(
             {
                 "sample_id": sample_id,
@@ -226,20 +200,8 @@ if __name__ == "__main__":
             }
         )
 
-    if not os.path.exists(args.submission_data_path):
-        os.makedirs(args.submission_data_path)
-
     with open(
-        f"{args.submission_data_path}/test.json",
+        f"{args.submission_data_path}/{args.sampling_type}/test.json",
         "w",
     ) as fp:
         json.dump(submission, fp, indent=2)
-
-
-
-    # for row in y_multirf:
-    #
-    # y_pred_time = [(x['answer_start_second']/x['video_length'], x['answer_end_second']/x['video_length']) for x in y_multirf]
-
-
-
