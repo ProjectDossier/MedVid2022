@@ -48,8 +48,8 @@ def convert(seconds: float) -> str:
 def expand_start_end_time(
     start_time: float, end_time: float, duration: float, method: str
 ) -> tuple[float, float]:
-    alpha1 = 0.5
-    alpha2 = 0.9
+    alpha1 = 0.4
+    alpha2 = 1.2
     beta1 = beta2 = 0
 
     start_time = start_time * alpha1 + beta1
@@ -71,7 +71,7 @@ if __name__ == "__main__":
         default="data/processed/text_predictions/biobert_qa/",
     )
     parser.add_argument("--converted_data_folder", default="submissions")
-    parser.add_argument("--filename", default="val.json")
+    parser.add_argument("--filename", default="test.json")
 
     args = parser.parse_args()
 
@@ -107,7 +107,7 @@ if __name__ == "__main__":
                 transcript=transcript_dict["transcript"],
                 merge_type="strict",
             )
-            expand_start_end_time(
+            start_time, end_time = expand_start_end_time(
                 start_time=start_time,
                 end_time=end_time,
                 duration=video["video_length"],

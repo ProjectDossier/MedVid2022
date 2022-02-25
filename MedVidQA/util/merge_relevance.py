@@ -38,4 +38,5 @@ if __name__ == "__main__":
             out_df = pd.concat([out_df, df])
 
         out_df = out_df.sort_values(["qid", "start", "duration", "score"])
+        out_df = out_df.drop_duplicates()
         out_df.to_csv(f"{args.output_folder}/{data_type}.csv", index=False)

@@ -171,7 +171,7 @@ if __name__ == "__main__":
     with open(f"{args.question_data_path}/{args.filename}") as fp:
         gold_data = json.load(fp)
 
-    with open(f"{args.submission_data_path}{args.filename}") as fp:
+    with open(f"{args.submission_data_path}/{args.filename}") as fp:
         submissions = json.load(fp)
 
     evaluate(submission=submissions, gold_data=gold_data)

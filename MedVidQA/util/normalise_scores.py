@@ -38,6 +38,9 @@ if __name__ == "__main__":
 
             csv_files = [x for x in os.listdir(f"{input_folder}/") if x.endswith(".csv")]
 
+            if len(csv_files) < 1:
+                continue
+
             out_df = pd.DataFrame()
             for csv_file in csv_files:
                 df = pd.read_csv(f"{input_folder}/{csv_file}", index_col=0)
@@ -48,8 +51,8 @@ if __name__ == "__main__":
                 out_df.loc[out_df['qid'] == qid, 'score'] = min_max_scaling(out_df.loc[out_df['qid'] == qid, 'score'])
 
             out_df = out_df.sort_values(["qid","start","duration","score"])
-            out_df = out_df.drop("text", axis=1)
+            try:
+                out_df = out_df.drop("text", axis=1)
+            except:
+                print("no text")
             out_df.to_csv(output_file, index=False)
-
-
-
