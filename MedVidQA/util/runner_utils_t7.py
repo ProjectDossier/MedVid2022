@@ -1,15 +1,15 @@
-import os
-import glob
-import random
-import numpy as np
-import torch
-import torch.utils.data
-import torch.backends.cudnn
-from tqdm import tqdm
-
 # from .data_util import index_to_time
 import argparse
+import glob
 import json
+import os
+import random
+
+import numpy as np
+import torch
+import torch.backends.cudnn
+import torch.utils.data
+from tqdm import tqdm
 
 
 def set_th_config(seed):

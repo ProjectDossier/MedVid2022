@@ -2,9 +2,10 @@ import glob
 import json
 import os
 import pickle
+
 import numpy as np
-from tqdm import tqdm
 import pandas as pd
+from tqdm import tqdm
 
 
 def load_json(filename):

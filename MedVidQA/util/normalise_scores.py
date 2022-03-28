@@ -1,6 +1,7 @@
-import pandas as pd
 import argparse
 import os
+
+import pandas as pd
 from tqdm.auto import tqdm
 
 from MedVidQA.util.data_util import min_max_scaling
@@ -20,7 +21,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     data_types: list[str] = [
-        x for x in os.listdir(f"{args.input_folder}") if os.path.isdir(f"{args.input_folder}/{x}")
+        x
+        for x in os.listdir(f"{args.input_folder}")
+        if os.path.isdir(f"{args.input_folder}/{x}")
     ]
     for data_type in tqdm(data_types):
 
@@ -34,9 +37,13 @@ if __name__ == "__main__":
         ]
         for model in models:
             input_folder = f"{args.input_folder}/{data_type}/{model}/"
-            output_file = f"{args.output_folder}/{data_type}/{model}_{args.output_name}.csv"
+            output_file = (
+                f"{args.output_folder}/{data_type}/{model}_{args.output_name}.csv"
+            )
 
-            csv_files = [x for x in os.listdir(f"{input_folder}/") if x.endswith(".csv")]
+            csv_files = [
+                x for x in os.listdir(f"{input_folder}/") if x.endswith(".csv")
+            ]
 
             if len(csv_files) < 1:
                 continue
@@ -47,10 +54,12 @@ if __name__ == "__main__":
                 out_df = pd.concat([out_df, df])
 
             # normlise score by qid
-            for qid in out_df['qid'].unique().tolist():
-                out_df.loc[out_df['qid'] == qid, 'score'] = min_max_scaling(out_df.loc[out_df['qid'] == qid, 'score'])
+            for qid in out_df["qid"].unique().tolist():
+                out_df.loc[out_df["qid"] == qid, "score"] = min_max_scaling(
+                    out_df.loc[out_df["qid"] == qid, "score"]
+                )
 
-            out_df = out_df.sort_values(["qid","start","duration","score"])
+            out_df = out_df.sort_values(["qid", "start", "duration", "score"])
             try:
                 out_df = out_df.drop("text", axis=1)
             except:

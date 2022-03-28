@@ -1,7 +1,8 @@
-import json
 import argparse
-from tqdm.auto import tqdm
+import json
 import os
+
+from tqdm.auto import tqdm
 
 
 def text_to_time_chars(

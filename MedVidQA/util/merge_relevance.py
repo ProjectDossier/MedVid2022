@@ -1,6 +1,7 @@
-import pandas as pd
-import os
 import argparse
+import os
+
+import pandas as pd
 from tqdm.auto import tqdm
 
 if __name__ == "__main__":
@@ -37,6 +38,11 @@ if __name__ == "__main__":
             df = pd.read_csv(f"{args.input_folder}/{data_type}/{csv_file}")
             out_df = pd.concat([out_df, df])
 
+        # FIXME in statistical models - remove in case of empty OCR...
+        out_df = out_df[out_df["start"] != "Empty"]
+        out_df['start'] = out_df['start'].astype(float)
+        out_df['duration'] = out_df['duration'].astype(float)
+        out_df['score'] = out_df['score'].astype(float)
         out_df = out_df.sort_values(["qid", "start", "duration", "score"])
         out_df = out_df.drop_duplicates()
         out_df.to_csv(f"{args.output_folder}/{data_type}.csv", index=False)
