@@ -1,15 +1,13 @@
-import json
 import argparse
+import json
 import os.path
 
 import numpy as np
 import pandas as pd
 import torch
 from sentence_transformers import SentenceTransformer
-from tqdm.auto import tqdm
 from sklearn.metrics.pairwise import cosine_similarity
-
-from MedVidQA.util.data_util import min_max_scaling
+from tqdm.auto import tqdm
 
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 print(f"using {device}")
