@@ -1,11 +1,12 @@
-import pandas as pd
-import json
-import random
-import seaborn as sns
-import matplotlib.pyplot as plt
 import argparse
+import json
 import os
+
+import matplotlib.pyplot as plt
+import pandas as pd
+import seaborn as sns
 from tqdm.auto import tqdm
+
 from MedVidQA.util.data_util import min_max_scaling
 
 
@@ -20,9 +21,9 @@ def plot_results_line(
     answer_start_second: float,
     answer_end_second: float,
     filename: str,
-    hue: str=None,
-    x_column:str = None,
-    y_column:str = None
+    hue: str = None,
+    x_column: str = None,
+    y_column: str = None,
 ):
     x1, y1 = [
         answer_start_second,
@@ -31,10 +32,12 @@ def plot_results_line(
 
     plt.plot(figsize=(15, 15))
     if hue and x_column and y_column:
-        sns.lineplot(data=data, x=x_column, y=y_column, hue=hue, size=.15)
+        sns.lineplot(data=data, x=x_column, y=y_column, hue=hue, size=0.15)
     else:
         sns.lineplot(data=data)
     plt.plot(x1, y1, marker="x", color="red")
+    plt.ylabel("similarity scores")
+    plt.xlabel("time [s]")
     plt.savefig(
         filename,
         dpi=300,
@@ -74,7 +77,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--results_file",
-        default="data/processed/predictions/time_normalised/test.csv",
+        default="data/processed/predictions/merged_predictions/test.csv",
         help="results file in a csv format containing similarity score.",
     )
     parser.add_argument(
@@ -84,7 +87,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--model_name",
-        default="time_normalised",
+        default="test",
         help="name of the model that will be appended to the plot.",
     )
     MINMAX_SCALE = False
@@ -123,6 +126,10 @@ if __name__ == "__main__":
             answer_end_second=gold_answer["answer_end_second"],
             filename=f"{plots_outfolder}/{gold_answer['sample_id']}_line_{args.model_name}.png",
         )
+        tmp_df.loc[tmp_df["input_feature"] == "test", "input_feature"] = "transcript-1"
+        tmp_df.loc[tmp_df["input_feature"] == "test_2", "input_feature"] = "transcript-2"
+        tmp_df.loc[tmp_df["input_feature"] == "test_3", "input_feature"] = "transcript-3"
+        tmp_df.loc[tmp_df["input_feature"] == "test_4", "input_feature"] = "transcript-4"
 
         # input_features
         plot_results_line(
@@ -136,7 +143,16 @@ if __name__ == "__main__":
         )
 
         plot_results_line(
-            data=tmp_df[tmp_df['model'].isin(["msmarco_roberta", "Tf", "DirichletLM", "In_expB2", "DirichletLM_index2"])],
+            data=tmp_df[
+                tmp_df["model"].isin(
+                    [
+                        "msmarco_roberta",
+                        "BM25",
+                        "DirichletLM",
+                        "nli_mpnet",
+                    ]
+                )
+            ],
             x_column="center",
             y_column="score",
             hue="model",
@@ -150,7 +166,7 @@ if __name__ == "__main__":
                 data=tmp_df,
                 x_column="center",
                 y_column="score",
-                answer_start_second=gold_answer["answer_start_second"],
-                answer_end_second=gold_answer["answer_end_second"],
+                answer_start_second=1,
+                answer_end_second=2,
                 filename=f"{plots_outfolder}/{gold_answer['sample_id']}_kde_{args.model_name}.png",
             )
