@@ -1,7 +1,8 @@
 """script for merging multiple subtitle lines into one larger text.
 It simply concatenates text and take min and max starting times from merged lines."""
-import json
 import argparse
+import json
+
 from tqdm.auto import tqdm
 
 
@@ -49,12 +50,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--output_data_path", default="data/interim/transcripts_merged/"
     )
-    parser.add_argument("--filename", default="train.json")
+    parser.add_argument("--filename", default="final")
 
     args = parser.parse_args()
 
     for merge_n_lines in tqdm(range(2, 5)):
-        with open(f"{args.input_data_path}/{args.filename}") as fp:
+        with open(f"{args.input_data_path}/{args.filename}.json") as fp:
             transcripts = json.load(fp)
 
         for video in transcripts:

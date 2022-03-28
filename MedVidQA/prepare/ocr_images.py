@@ -1,10 +1,10 @@
-import pytesseract
-from PIL import Image
-import os
-from tqdm.auto import tqdm
 import argparse
 import json
+import os
 
+import pytesseract
+from PIL import Image
+from tqdm.auto import tqdm
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -33,7 +33,7 @@ if __name__ == "__main__":
 
             if ocred_text:
                 transcript.append(
-                    {"text": ocred_text, "start": float(frame_n), "duration": 4.0}
+                    {"text": ocred_text, "start": float(frame_n), "duration": 3.0}
                 )
 
         transcript_sorted = sorted(transcript, key=lambda d: d["start"])
