@@ -14,48 +14,8 @@ import pandas as pd
 
 from youtube_transcript_api import YouTubeTranscriptApi
 import youtube_dl
-
-# # Set Environmental Variables
-
-parser = argparse.ArgumentParser()
-parser.add_argument(
-    "--error_filename_1",
-    type=str,
-    default="extract_errors_method1.txt",
-    help="Filename for .txt to catch errors from extraction method 1",
-)
-parser.add_argument(
-    "--error_filename_2",
-    type=str,
-    default="extract_errors_method2.txt",
-    help="Filename for .txt to catch errors from extraction method 2",
-)
-parser.add_argument(
-    "--error_filename_3",
-    type=str,
-    default="extract_errors_method3.txt",
-    help="Filename for .txt to catch errors from extraction method 3",
-)
-parser.add_argument(
-    "--source_dir",
-    type=str,
-    default="../",
-    help="Directory where source JSON files without text are located",
-)
-parser.add_argument(
-    "--target_dir",
-    type=str,
-    default="../text_extracted_datasets",
-    help="Directory where finalized JSON files with text will be located",
-)
-args = parser.parse_args()
-
-NUM_OF_ERRORS = 0
-
-# # Create Target Directory if not already created
-if not os.path.isdir(args.target_dir):
-    os.mkdir(args.target_dir)
-
+from tqdm.auto import tqdm
+tqdm.pandas()
 
 # ## Methods
 # ### 3 Methods to Pull Captions from Youtube Video via Python Libraries
@@ -213,232 +173,277 @@ def caption_extraction_v3(video_id):
     f.close()
 
 
-# # Pre-Process Data
+if __name__ == '__main__':
 
-# ## Download Full Dataset
 
-datasets = {}
-# Import JSON files from source directory
-json_filenames = [
-    pos_json for pos_json in os.listdir(args.source_dir) if pos_json.endswith(".json")
-]
-for json_filename in json_filenames:
-    datasets[json_filename] = pd.read_json(args.source_dir + json_filename)
-    # Reset index
-    datasets[json_filename].reset_index(drop=True, inplace=True)
+    # # Set Environmental Variables
 
-# ## Extract Captions for YouTube Video with First Method
-# 1. Create .txt file to log any errors
-# 2. Add Captions from video to new Column labeled "video_sub_title"
-
-# Create new text file to log errors if not already made
-if not os.path.isfile(args.error_filename_1):
-    open(args.error_filename_1, "w").close()
-
-# Run through every JSON File to extract captions for each file
-for json_filename in json_filenames:
-
-    # Log length of Dataset
-    f = open(args.error_filename_1, "a")
-    print(
-        "\n"
-        + json_filename[:-5].upper()
-        + " Dataset Length without Captions: "
-        + str(len(datasets[json_filename].index)),
-        file=f,
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--error_filename_1",
+        type=str,
+        default="extract_errors_method1.txt",
+        help="Filename for .txt to catch errors from extraction method 1",
     )
-    f.close()
+    parser.add_argument(
+        "--error_filename_2",
+        type=str,
+        default="extract_errors_method2.txt",
+        help="Filename for .txt to catch errors from extraction method 2",
+    )
+    parser.add_argument(
+        "--error_filename_3",
+        type=str,
+        default="extract_errors_method3.txt",
+        help="Filename for .txt to catch errors from extraction method 3",
+    )
+    parser.add_argument(
+        "--source_dir",
+        type=str,
+        default="../../data/raw/MedVidCL/",
+        help="Directory where source JSON files without text are located",
+    )
+    parser.add_argument(
+        "--target_dir",
+        type=str,
+        default="../../data/interim/text_extracted_datasets/",
+        help="Directory where finalized JSON files with text will be located",
+    )
+    args = parser.parse_args()
 
-    # Reset number of errors to log in text file
     NUM_OF_ERRORS = 0
 
-    datasets[json_filename]["video_sub_title"] = datasets[json_filename][
-        "video_id"
-    ].apply(caption_extraction)
-    print("Number of Errors in Dataset: " + str(NUM_OF_ERRORS))
+    # # Create Target Directory if not already created
+    if not os.path.isdir(args.target_dir):
+        os.mkdir(args.target_dir)
 
-# Check which videos were still not scraped
-for json_filename in json_filenames:
-    print(
-        "Number of Unextracted Vids in " + json_filename[:-5].upper() + " Dataset: ",
-        str(
-            len(
-                datasets[json_filename][
-                    (datasets[json_filename]["video_sub_title"] == "")
-                    | (datasets[json_filename]["video_sub_title"].str.isspace())
-                    | datasets[json_filename]["video_sub_title"].isna()
-                ]
-            )
-        ),
-    )
+    # # Pre-Process Data
 
+    # ## Download Full Dataset
 
-# ## Use Second Extraction Method to Fill in Blanks
+    datasets = {}
+    # Import JSON files from source directory
+    json_filenames = [
+        pos_json for pos_json in os.listdir(args.source_dir) if pos_json.endswith(".json")
+    ]
+    for json_filename in json_filenames:
+        print(args.source_dir + json_filename)
+        datasets[json_filename] = pd.read_json(args.source_dir + json_filename)
+        # Reset index
+        datasets[json_filename].reset_index(drop=True, inplace=True)
 
-# Create new text file to log errors if not already made
-if not os.path.isfile(args.error_filename_2):
-    open(args.error_filename_2, "w").close()
+    # ## Extract Captions for YouTube Video with First Method
+    # 1. Create .txt file to log any errors
+    # 2. Add Captions from video to new Column labeled "video_sub_title"
 
-# Run through every JSON File to extract captions for each file
-for json_filename in json_filenames:
+    # Create new text file to log errors if not already made
+    if not os.path.isfile(args.error_filename_1):
+        open(args.error_filename_1, "w").close()
 
-    # Log length of Dataset
-    f = open(args.error_filename_2, "a")
-    print(
-        "\n"
-        + json_filename[:-5].upper()
-        + " Dataset Length without Captions: "
-        + str(
-            len(
-                datasets[json_filename]
-                .loc[
-                    (datasets[json_filename]["video_sub_title"] == "")
-                    | (datasets[json_filename]["video_sub_title"].str.isspace())
-                    | (datasets[json_filename]["video_sub_title"].isna())
-                ]
-                .index
-            )
-        ),
-        file=f,
-    )
-    f.close()
+    # Run through every JSON File to extract captions for each file
+    for json_filename in tqdm(json_filenames):
 
-    # Reset number of errors to log in text file
-    NUM_OF_ERRORS = 0
+        # Log length of Dataset
+        f = open(args.error_filename_1, "a")
+        print(
+            "\n"
+            + json_filename[:-5].upper()
+            + " Dataset Length without Captions: "
+            + str(len(datasets[json_filename].index)),
+            file=f,
+        )
+        f.close()
 
-    datasets[json_filename].loc[
-        (datasets[json_filename]["video_sub_title"] == "")
-        | (datasets[json_filename]["video_sub_title"].str.isspace())
-        | (datasets[json_filename]["video_sub_title"].isna()),
-        "video_sub_title",
-    ] = (
-        datasets[json_filename]
-        .loc[
-            (datasets[json_filename]["video_sub_title"] == "")
-            | (datasets[json_filename]["video_sub_title"].str.isspace())
-            | (datasets[json_filename]["video_sub_title"].isna()),
-            "video_id",
-        ]
-        .apply(caption_extraction_v2)
-    )
-    print("Number of Errors in Dataset: " + str(NUM_OF_ERRORS))
+        # Reset number of errors to log in text file
+        NUM_OF_ERRORS = 0
 
-# Check which videos were still not scraped
-for json_filename in json_filenames:
-    print(
-        "Number of Unextracted Vids in " + json_filename[:-5].upper() + " Dataset: ",
-        str(
-            len(
-                datasets[json_filename][
-                    (datasets[json_filename]["video_sub_title"] == "")
-                    | (datasets[json_filename]["video_sub_title"].str.isspace())
-                    | datasets[json_filename]["video_sub_title"].isna()
-                ]
-            )
-        ),
-    )
+        datasets[json_filename]["video_sub_title"] = datasets[json_filename][
+            "video_id"
+        ].progress_apply(caption_extraction)
+        print("Number of Errors in Dataset: " + str(NUM_OF_ERRORS))
 
-# ## Use Third Extraction Method to Fill in Blanks
-
-# Create new text file to log errors if not already made
-if not os.path.isfile(args.error_filename_3):
-    open(args.error_filename_3, "w").close()
-
-# Run through every JSON File to extract captions for each file
-for json_filename in json_filenames:
-
-    # Log length of Dataset
-    f = open(args.error_filename_3, "a")
-    print(
-        "\n"
-        + json_filename[:-5].upper()
-        + " Dataset Length without Captions: "
-        + str(
-            len(
-                datasets[json_filename]
-                .loc[
-                    (datasets[json_filename]["video_sub_title"] == "")
-                    | (datasets[json_filename]["video_sub_title"].str.isspace())
-                    | (datasets[json_filename]["video_sub_title"].isna())
-                ]
-                .index
-            )
-        ),
-        file=f,
-    )
-    f.close()
-
-    # Reset number of errors to log in text file
-    NUM_OF_ERRORS = 0
-
-    datasets[json_filename].loc[
-        (datasets[json_filename]["video_sub_title"] == "")
-        | (datasets[json_filename]["video_sub_title"].str.isspace())
-        | (datasets[json_filename]["video_sub_title"].isna()),
-        "video_sub_title",
-    ] = (
-        datasets[json_filename]
-        .loc[
-            (datasets[json_filename]["video_sub_title"] == "")
-            | (datasets[json_filename]["video_sub_title"].str.isspace())
-            | (datasets[json_filename]["video_sub_title"].isna()),
-            "video_id",
-        ]
-        .apply(caption_extraction_v3)
-    )
-    print("Number of Errors in Dataset: " + str(NUM_OF_ERRORS))
-
-# Check which videos were still not scraped
-for json_filename in json_filenames:
-    print(
-        "Number of Unextracted Vids in " + json_filename[:-5].upper() + " Dataset: ",
-        str(
-            len(
-                datasets[json_filename][
-                    (datasets[json_filename]["video_sub_title"] == "")
-                    | (datasets[json_filename]["video_sub_title"].str.isspace())
-                    | datasets[json_filename]["video_sub_title"].isna()
-                ]
-            )
-        ),
-    )
-
-
-# ## Perform the following tasks for all datasets:
-# 1. Recreate Dataframe to have only 5 columns:
-# 2. Clean Up Data
-# 3. Send to JSON Files
-
-for json_filename in json_filenames:
-
-    # Create new dataframe to set to only 5 columns & clean up '\n' in video_sub_title
-    processed_df = pd.DataFrame(
-        {
-            "video_id": datasets[json_filename]["video_id"],
-            "video_link": datasets[json_filename]["video_link"],
-            "video_title": datasets[json_filename]["video_title"],
-            "video_sub_title": datasets[json_filename]["video_sub_title"].replace(
-                r"\n", " ", regex=True
+    # Check which videos were still not scraped
+    for json_filename in tqdm(json_filenames):
+        print(
+            "Number of Unextracted Vids in " + json_filename[:-5].upper() + " Dataset: ",
+            str(
+                len(
+                    datasets[json_filename][
+                        (datasets[json_filename]["video_sub_title"] == "")
+                        | (datasets[json_filename]["video_sub_title"].str.isspace())
+                        | datasets[json_filename]["video_sub_title"].isna()
+                    ]
+                )
             ),
-            "label": datasets[json_filename]["label"],
-        }
-    )
+        )
 
-    # Remove trailing and leading white spaces
-    processed_df["video_sub_title"] = processed_df["video_sub_title"].str.strip()
 
-    # Reset index
-    processed_df.reset_index(drop=True, inplace=True)
+    # ## Use Second Extraction Method to Fill in Blanks
 
-    # Change any non-UTF-8 symbols to UTF-8
-    processed_df["video_sub_title"] = processed_df["video_sub_title"].apply(
-        lambda val: unicodedata.normalize("NFKD", val)
-    )
+    # Create new text file to log errors if not already made
+    if not os.path.isfile(args.error_filename_2):
+        open(args.error_filename_2, "w").close()
 
-    # Fill any empty cells with empty string
-    processed_df = processed_df.fillna("")
+    # Run through every JSON File to extract captions for each file
+    for json_filename in tqdm(json_filenames):
 
-    # Export File to JSON to Check Design
-    processed_df.to_json(
-        args.target_dir + "/" + json_filename, orient="records", indent=4
-    )
+        # Log length of Dataset
+        f = open(args.error_filename_2, "a")
+        print(
+            "\n"
+            + json_filename[:-5].upper()
+            + " Dataset Length without Captions: "
+            + str(
+                len(
+                    datasets[json_filename]
+                    .loc[
+                        (datasets[json_filename]["video_sub_title"] == "")
+                        | (datasets[json_filename]["video_sub_title"].str.isspace())
+                        | (datasets[json_filename]["video_sub_title"].isna())
+                    ]
+                    .index
+                )
+            ),
+            file=f,
+        )
+        f.close()
+
+        # Reset number of errors to log in text file
+        NUM_OF_ERRORS = 0
+
+        datasets[json_filename].loc[
+            (datasets[json_filename]["video_sub_title"] == "")
+            | (datasets[json_filename]["video_sub_title"].str.isspace())
+            | (datasets[json_filename]["video_sub_title"].isna()),
+            "video_sub_title",
+        ] = (
+            datasets[json_filename]
+            .loc[
+                (datasets[json_filename]["video_sub_title"] == "")
+                | (datasets[json_filename]["video_sub_title"].str.isspace())
+                | (datasets[json_filename]["video_sub_title"].isna()),
+                "video_id",
+            ]
+            .apply(caption_extraction_v2)
+        )
+        print("Number of Errors in Dataset: " + str(NUM_OF_ERRORS))
+
+    # Check which videos were still not scraped
+    for json_filename in tqdm(json_filenames):
+        print(
+            "Number of Unextracted Vids in " + json_filename[:-5].upper() + " Dataset: ",
+            str(
+                len(
+                    datasets[json_filename][
+                        (datasets[json_filename]["video_sub_title"] == "")
+                        | (datasets[json_filename]["video_sub_title"].str.isspace())
+                        | datasets[json_filename]["video_sub_title"].isna()
+                    ]
+                )
+            ),
+        )
+
+    # ## Use Third Extraction Method to Fill in Blanks
+
+    # Create new text file to log errors if not already made
+    if not os.path.isfile(args.error_filename_3):
+        open(args.error_filename_3, "w").close()
+
+    # Run through every JSON File to extract captions for each file
+    for json_filename in tqdm(json_filenames):
+
+        # Log length of Dataset
+        f = open(args.error_filename_3, "a")
+        print(
+            "\n"
+            + json_filename[:-5].upper()
+            + " Dataset Length without Captions: "
+            + str(
+                len(
+                    datasets[json_filename]
+                    .loc[
+                        (datasets[json_filename]["video_sub_title"] == "")
+                        | (datasets[json_filename]["video_sub_title"].str.isspace())
+                        | (datasets[json_filename]["video_sub_title"].isna())
+                    ]
+                    .index
+                )
+            ),
+            file=f,
+        )
+        f.close()
+
+        # Reset number of errors to log in text file
+        NUM_OF_ERRORS = 0
+
+        datasets[json_filename].loc[
+            (datasets[json_filename]["video_sub_title"] == "")
+            | (datasets[json_filename]["video_sub_title"].str.isspace())
+            | (datasets[json_filename]["video_sub_title"].isna()),
+            "video_sub_title",
+        ] = (
+            datasets[json_filename]
+            .loc[
+                (datasets[json_filename]["video_sub_title"] == "")
+                | (datasets[json_filename]["video_sub_title"].str.isspace())
+                | (datasets[json_filename]["video_sub_title"].isna()),
+                "video_id",
+            ]
+            .apply(caption_extraction_v3)
+        )
+        print("Number of Errors in Dataset: " + str(NUM_OF_ERRORS))
+
+    # Check which videos were still not scraped
+    for json_filename in tqdm(json_filenames):
+        print(
+            "Number of Unextracted Vids in " + json_filename[:-5].upper() + " Dataset: ",
+            str(
+                len(
+                    datasets[json_filename][
+                        (datasets[json_filename]["video_sub_title"] == "")
+                        | (datasets[json_filename]["video_sub_title"].str.isspace())
+                        | datasets[json_filename]["video_sub_title"].isna()
+                    ]
+                )
+            ),
+        )
+
+
+    # ## Perform the following tasks for all datasets:
+    # 1. Recreate Dataframe to have only 5 columns:
+    # 2. Clean Up Data
+    # 3. Send to JSON Files
+
+    for json_filename in tqdm(json_filenames):
+
+        # Create new dataframe to set to only 5 columns & clean up '\n' in video_sub_title
+        processed_df = pd.DataFrame(
+            {
+                "video_id": datasets[json_filename]["video_id"],
+                "video_link": datasets[json_filename]["video_link"],
+                "video_title": datasets[json_filename]["video_title"],
+                "video_sub_title": datasets[json_filename]["video_sub_title"].replace(
+                    r"\n", " ", regex=True
+                ),
+                "label": datasets[json_filename]["label"],
+            }
+        )
+
+        # Remove trailing and leading white spaces
+        processed_df["video_sub_title"] = processed_df["video_sub_title"].str.strip()
+
+        # Reset index
+        processed_df.reset_index(drop=True, inplace=True)
+
+        # Change any non-UTF-8 symbols to UTF-8
+        processed_df["video_sub_title"] = processed_df["video_sub_title"].apply(
+            lambda val: unicodedata.normalize("NFKD", val)
+        )
+
+        # Fill any empty cells with empty string
+        processed_df = processed_df.fillna("")
+
+        # Export File to JSON to Check Design
+        processed_df.to_json(
+            args.target_dir + "/" + json_filename, orient="records", indent=4
+        )

@@ -1,17 +1,17 @@
-import os
-import cv2
+import argparse
 import glob
 import json
-import torch
-import argparse
+import os
 import subprocess
+
+import cv2
 import numpy as np
-from tqdm import tqdm
+import torch
 from prepare import videotransforms
 from prepare.feature_extractor import InceptionI3d
-from torchvision import transforms
 from pytube import YouTube
-
+from torchvision import transforms
+from tqdm import tqdm
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--gpu_idx", type=str, default="0", help="gpu index")

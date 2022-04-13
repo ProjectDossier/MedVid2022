@@ -2,7 +2,9 @@ import glob
 import json
 import os
 import pickle
+
 import numpy as np
+import pandas as pd
 from tqdm import tqdm
 
 
@@ -174,3 +176,7 @@ def pad_video_seq(sequences, max_length=None):
             seq_ = seq
         sequence_padded.append(seq_)
     return sequence_padded, sequence_length
+
+
+def min_max_scaling(series: pd.Series) -> pd.Series:
+    return (series - series.min()) / (series.max() - series.min())

@@ -37,3 +37,23 @@ python main.py --mode test
 
 ## Credit
 This code repo is adapted from this [repo](https://github.com/IsaacChanghau/VSLNet).
+
+
+## Replication steps
+
+
+1. Download videos: `prepare/download_videos.py` 
+2. Download transcripts: `prepare/get_transcripts.py`
+3. Get screenshots every 3 seconds: `prepare/get_video_frames.py` 
+4. Find text in the video frames: `prepare/ocr_images.py`
+5. Merge transcripts to create more data points: `prepare/expand_data.py`
+6. Calculate the question-passage similarity: `model/passage_similarity.py`  
+7. Normalise similarity scores for all input features for each model `util/normalise_scores.py`
+8. Merge relevance scores from different models: `util/merge_relevance.py`
+9. Create plots for visual check: `visualisations/plot_relevance.py`  
+10. Run Models:
+    - Extractive Q&A baseline: `model/extractive_qa.py`
+    - Multi-output regression:
+      - perform time normalisation: `util/time_normalisation.py` 
+      - `model/multi_output_regression.py`
+    - Peak detection: `model/peak_detection.py`
